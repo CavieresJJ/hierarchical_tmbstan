@@ -2,17 +2,12 @@
 #                           Hierarchical model simulate
 #==================================================================================
 
-rm(list=ls(all=TRUE))
-setwd("C:/Users/joaquin/Desktop/Desktop/Stan/ProjectAalto/hierarchical")
-
 # Packages
 library(TMB)
 library(reshape2)
 library(tmbstan)
 library(shinystan)
 library(rstan)
-library(rstanarm)
-
 
 
 options(mc.cores = parallel::detectCores())
@@ -268,42 +263,6 @@ parameters =  list(intercept = 0,
 #======================================================================================================
 
 #==============================
-#      INVERSE GAUSSIAN
-#==============================
-obj = MakeADFun(data = data, parameters = parameters, random = "u", DLL="model_hierachical_bayes_gamma2")
-
-# Optimize
-obj$fn()
-opt = with(obj, nlminb(par, fn, gr)) #restart 
-opt$par
-
-rep = sdreport(obj)
-summary(rep, "random")                      ## Only random effects
-summary(rep, "fixed", p.value = TRUE)       ## Only non-random effects
-summary(rep, "report")                      ## Only report
-
-
-
-
-#==============================
-#           LOGNORMAL
-#==============================
-obj2 = MakeADFun(data = data, parameters = parameters, random = "u", DLL="model_hierachical_bayes_gamma2")
-
-# Optimize
-obj2$fn()
-opt2 = with(obj2, nlminb(par, fn, gr)) #restart 
-opt2$par
-
-rep2 = sdreport(obj2)
-summary(rep2, "random")                      ## Only random effects
-summary(rep2, "fixed", p.value = TRUE)       ## Only non-random effects
-summary(rep2, "report")                      ## Only report
-
-
-
-
-#==============================
 #           GAMMA
 #==============================
 obj3 = MakeADFun(data = data, parameters = parameters, random = "u", DLL="model_hierachical_bayes_gamma2")
@@ -322,10 +281,8 @@ summary(rep3, "report")                      ## Only report
 
 
 ## Calculate AIC
-AIC1 <- 2*opt$objective +2*length(opt$par)
-AIC2 <- 2*opt2$objective +2*length(opt2$par)
-AIC3 <- 2*opt3$objective +2*length(opt3$par)
-c(AIC1, AIC2, AIC3)
+AIC3 = 2*opt3$objective +2*length(opt3$par)
+AIC3
 
 
 
@@ -333,12 +290,12 @@ c(AIC1, AIC2, AIC3)
 #==========================================================================
 #                   obtain outputs from better model (GAMMA)
 #==========================================================================
-rep = sdreport(obj)
+rep = sdreport(obj3)
 summary(rep, "random")                      ## Only random effects
 summary(rep, "fixed", p.value = TRUE)       ## Only non-random effects
 summary(rep, "report")                      ## Only report
 
-obj$report()
+obj3$report()
 
 
 #======================================================================================================
@@ -346,20 +303,20 @@ obj$report()
 #======================================================================================================
 
 # Using optimHess for finite-difference hessian using function only
-Hess = optimHess(opt$par, fn=obj$fn )
-SD = sdreport( obj, hessian.fixed=Hess )
+Hess = optimHess(opt$par, fn=obj3$fn )
+SD = sdreport( obj3, hessian.fixed=Hess )
 SD
 summary(SD, "random")
 
 # Also fails using finite-difference hessian
-sqrt(diag(solve(Hess)))
+#sqrt(diag(solve(Hess)))
 
 
-# Works using different finite-difference method
-Hess = numDeriv::hessian( func=obj$fn, x=opt$par )
-SD = sdreport(obj, hessian.fixed=Hess )
-SD
-summary(SD, "random")
+# # Works using different finite-difference method
+# Hess = numDeriv::hessian( func=obj3$fn, x=opt$par )
+# SD = sdreport(obj, hessian.fixed=Hess )
+# SD
+# summary(SD, "random")
 
 
 #=====================================================================================================
@@ -368,7 +325,7 @@ summary(SD, "random")
 library(tictoc)
 
 tic("Time of estimation")
-fit_mcmc = tmbstan(obj, chains=3, control = list(max_treedepth = 15, adapt_delta = 0.99), iter=3000, laplace = FALSE)
+fit_mcmc = tmbstan(obj3, chains=3, control = list(max_treedepth = 15, adapt_delta = 0.99), iter=3000, laplace = FALSE)
 toc()
 
 ## Methods provided by 'rstan'
@@ -385,48 +342,44 @@ post <- as.matrix(fit_mcmc, pars = c("intercept", "beta_year", "u"))
 # 2) all parameters
 posterior = as.matrix(fit_mcmc)
 
-x11()
-par(mfrow=c(4,4))
-plot(posterior[,'u[1]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[2]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[3]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[4]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[5]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[6]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[7]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[8]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[9]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[10]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[11]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[12]'], type = "l", col = "cadetblue")
-plot(posterior[,'u[13]'], type = "l", col = "cadetblue")
-
-x11()
-par(mfrow=c(4,4))
-hist(posterior[,'u[1]'], col = "darksalmon")
-hist(posterior[,'u[2]'], col = "darksalmon")
-hist(posterior[,'u[3]'], col = "darksalmon")
-hist(posterior[,'u[4]'], col = "darksalmon")
-hist(posterior[,'u[5]'], col = "darksalmon")
-hist(posterior[,'u[6]'], col = "darksalmon")
-hist(posterior[,'u[7]'], col = "darksalmon")
-hist(posterior[,'u[8]'], col = "darksalmon")
-hist(posterior[,'u[9]'], col = "darksalmon")
-hist(posterior[,'u[10]'],col = "darksalmon")
-hist(posterior[,'u[11]'],col = "darksalmon")
-hist(posterior[,'u[12]'],col = "darksalmon")
-hist(posterior[,'u[13]'],col = "darksalmon")
-
-
-
-
+# x11()
+# par(mfrow=c(4,4))
+# plot(posterior[,'u[1]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[2]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[3]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[4]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[5]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[6]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[7]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[8]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[9]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[10]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[11]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[12]'], type = "l", col = "cadetblue")
+# plot(posterior[,'u[13]'], type = "l", col = "cadetblue")
+# 
+# x11()
+# par(mfrow=c(4,4))
+# hist(posterior[,'u[1]'], col = "darksalmon")
+# hist(posterior[,'u[2]'], col = "darksalmon")
+# hist(posterior[,'u[3]'], col = "darksalmon")
+# hist(posterior[,'u[4]'], col = "darksalmon")
+# hist(posterior[,'u[5]'], col = "darksalmon")
+# hist(posterior[,'u[6]'], col = "darksalmon")
+# hist(posterior[,'u[7]'], col = "darksalmon")
+# hist(posterior[,'u[8]'], col = "darksalmon")
+# hist(posterior[,'u[9]'], col = "darksalmon")
+# hist(posterior[,'u[10]'],col = "darksalmon")
+# hist(posterior[,'u[11]'],col = "darksalmon")
+# hist(posterior[,'u[12]'],col = "darksalmon")
+# hist(posterior[,'u[13]'],col = "darksalmon")
+# 
 
 
 # bayesplot
 library(bayesplot)
 plot_title <- ggtitle("Posterior distributions", "with medians and 80% intervals")
 
-x11()
 mcmc_areas(posterior, pars = c("intercept", "beta_year[1]", "beta_trim[1]", "beta_destine[1]"), prob = 0.8) + plot_title
 
 
@@ -435,18 +388,6 @@ posterior2 <- extract(fit_mcmc, inc_warmup = TRUE, permuted = FALSE)
 color_scheme_set("mix-blue-pink")
 p <- mcmc_trace(posterior2,  pars = c("beta_year[1]", "beta_trim[1]", "beta_destine[1]"), n_warmup = 300, facet_args = list(nrow = 2, labeller = label_parsed))
 p + facet_text(size = 15)
-
-
-
-y <- dat$cpue
-yrep_mcmc = posterior_predict(fit_mcmc, draws = 500)
-yrep_nb = posterior_predict(fit_nb, draws = 500)
-dim(yrep_poisson)
-
-get_posterior_mean(fit_mcmc)
-plot(fit_mcmc)
-log_posterior(fit_mcmc)
-
 
 
 
@@ -475,7 +416,6 @@ head(np_cp)
 color_scheme_set("darkgray")
 mcmc_parcoord(posterior_cp, np = np_cp)
 
-x11()
 mcmc_pairs(posterior_cp, np = np_cp, pars = c("intercept", "logsigma", "logsigma_space"), off_diag_args = list(size = 0.75))
 
 
@@ -496,31 +436,5 @@ mcmc_neff(ratios_cp, size = 2)
 
 mcmc_acf(posterior_cp, pars = "intercept", lags = 10)
 
-
-
-
-
-
-## Can extract marginal posteriors easily
-post <- as.matrix(fit_mcmc)
-hist(post[,'u[1]'])
-hist(post[,'u[2]'])
-hist(post[,'u[3]'])# random effect
-hist(post[,'logsigma'])                   # fixed effect
-hist(post[,'logsigma_space'])
-
-## What if you want a posterior for derived quantities in the report? Just
-## loop through each posterior sample (row) and call the report function
-## which returns a list. The last column is the log-posterior density (lp__)
-## and needs to be dropped
-obj$report(post[1,-ncol(post)])         # sd0 is only element
-sd0 <- rep(NA, len=nrow(post))
-for(i in 1:nrow(post)){
-  r <- obj$report(post[i,-ncol(post)])
-  sd0[i] <- r$logsigma
-}
-hist(sd0)
-
-names(as.data.frame(fit_mcmc))
 
 
