@@ -19,7 +19,7 @@ Sys.setenv(LOCAL_CPPFLAGS = '-march=native')
 #===================================================================================================================
 #                                Firts, I must create the model in TMB
 #===================================================================================================================
-model_hierachical_bayes_gamma2 = '
+hierarchical_model = '
 #include <TMB.hpp>
 
 //
@@ -209,8 +209,8 @@ Type objective_function<Type>::operator() ()
 '
 #====================================================================================================================
 
-write(model_hierachical_bayes_gamma2, file = "model_hierachical_bayes_gamma2.cpp")
-compile("model_hierachical_bayes_gamma2.cpp")
+write(hierarchical_model, file = "hierarchical_model.cpp")
+compile("hierarchical_model.cpp")
 
 
 
@@ -259,43 +259,29 @@ parameters =  list(intercept = 0,
 
 #======================================================================================================
 #                                   load the model created in TMB 
-                          dyn.load(dynlib("model_hierachical_bayes_gamma2"))
+                          dyn.load(dynlib("hierarchical_model"))
 #======================================================================================================
 
 #==============================
 #           GAMMA
 #==============================
-obj3 = MakeADFun(data = data, parameters = parameters, random = "u", DLL="model_hierachical_bayes_gamma2")
+obj = MakeADFun(data = data, parameters = parameters, random = "u", DLL="hierarchical_model")
 
 # Optimize
-obj3$fn()
-opt3 = with(obj3, nlminb(par, fn, gr)) #restart
-opt3$par
+obj$fn()
+opt = with(obj, nlminb(par, fn, gr)) #restart
+opt$par
 
-rep3 = sdreport(obj3)
-summary(rep3, "random")                      ## Only random effects
-summary(rep3, "fixed", p.value = TRUE)       ## Only non-random effects
-summary(rep3, "report")                      ## Only report
-
-
-
-
-## Calculate AIC
-AIC3 = 2*opt3$objective +2*length(opt3$par)
-AIC3
-
-
-
-
-#==========================================================================
-#                   obtain outputs from better model (GAMMA)
-#==========================================================================
-rep = sdreport(obj3)
+rep = sdreport(obj)
 summary(rep, "random")                      ## Only random effects
 summary(rep, "fixed", p.value = TRUE)       ## Only non-random effects
 summary(rep, "report")                      ## Only report
 
-obj3$report()
+
+## Calculate AIC
+AIC = 2*opt$objective +2*length(opt$par)
+AIC
+
 
 
 #======================================================================================================
@@ -303,8 +289,8 @@ obj3$report()
 #======================================================================================================
 
 # Using optimHess for finite-difference hessian using function only
-Hess = optimHess(opt$par, fn=obj3$fn )
-SD = sdreport( obj3, hessian.fixed=Hess )
+Hess = optimHess(opt$par, fn=obj$fn )
+SD = sdreport( obj, hessian.fixed=Hess )
 SD
 summary(SD, "random")
 
@@ -325,7 +311,7 @@ summary(SD, "random")
 library(tictoc)
 
 tic("Time of estimation")
-fit_mcmc = tmbstan(obj3, chains=3, control = list(max_treedepth = 15, adapt_delta = 0.99), iter=3000, laplace = FALSE)
+fit_mcmc = tmbstan(obj, chains=3, control = list(max_treedepth = 15, adapt_delta = 0.99), iter=3000, laplace = FALSE)
 toc()
 
 ## Methods provided by 'rstan'
